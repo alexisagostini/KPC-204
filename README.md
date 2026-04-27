@@ -143,4 +143,155 @@ gmx grompp -f minim.mdp -c KPC2_ions.gro \
 
 gmx mdrun -v -deffnm minim
 ```
+### NVT (atomes volume temperature)
+```bash
+nano nvt.mdp
+```
+```markdown$
+; Paramètres de run
+define                  = -DPOSRES      ; Restraints sur la protéine
+integrator              = md            ; Algorithme leap-frog
+nsteps                  = 50000         ; 2 fs × 50000 = 100 ps
+dt                      = 0.002         ; Pas de temps en ps
 
+; Sorties
+nstxout                 = 500           ; Sauvegarder les coordonnées toutes les 1 ps
+nstvout                 = 500           ; Sauvegarder les vitesses
+nstenergy               = 500           ; Sauvegarder l'énergie
+nstlog                  = 500           ; Écrire dans le log
+
+; Liaisons
+constraint_algorithm    = lincs
+constraints             = h-bonds
+lincs_iter              = 1
+lincs_order             = 4
+
+; Électrostatique
+cutoff-scheme           = Verlet
+ns_type                 = grid
+nstlist                 = 10
+rcoulomb                = 1.0
+rvdw                    = 1.0
+coulombtype             = PME
+pme_order               = 4
+fourierspacing          = 0.16
+
+; Température (thermostat)
+tcoupl                  = V-rescale
+tc-grps                 = Protein Non-Protein
+tau_t                   = 0.1     0.1
+ref_t                   = 300     300
+
+; Pression (désactivée en NVT)
+pcoupl                  = no
+
+; Vitesses initiales
+gen_vel                 = yes
+gen_temp                = 300
+gen_seed                = -1
+```
+```bash
+# 1. Compiler avec grompp
+gmx grompp -f nvt.mdp -c em.gro -r em.gro -p topol.top -n index.ndx -o nvt.tpr
+
+# 2. Lancer la simulation
+gmx mdrun -v -deffnm nvt
+```
+### NPT (atomes pression temperature)
+```bash
+nano npt.mdp
+```
+```markdown
+; npt.mdp - Équilibration pression + température
+integrator          = md
+nsteps              = 50000        ; 100 ps
+dt                  = 0.002
+
+; Température
+tcoupl              = V-rescale
+tc-grps             = Protein Non-Protein
+tau_t               = 0.1  0.1
+ref_t               = 300  300
+
+; Pression 
+pcoupl              = Parrinello-Rahman
+pcoupltype          = isotropic
+tau_p               = 2.0
+ref_p               = 1.0          ; 1 bar
+compressibility     = 4.5e-5       ; compressibilité de l'eau
+
+; Restraints sur la protéine
+define              = -DPOSRES
+
+; Électrostatique
+coulombtype         = PME
+rcoulomb            = 1.0
+rvdw                = 1.0
+pbc                 = xyz
+```
+```bash
+gmx grompp -f nvt.mdp -c minim.gro \
+           -r minim.gro -p topol.top -o nvt.tpr
+
+gmx mdrun -deffnm nvt
+```
+#### production MD 
+```bash
+nano md.mdp
+```
+```markdown
+; === PRODUCTION MD — 20 ns ===
+
+; Run
+integrator              = md
+nsteps                  = 10000000      ; 2 fs × 10 000 000 = 20 ns ✅
+dt                      = 0.002
+
+; Sorties
+nstxout                 = 0             ; Pas de .trr (lourd)
+nstvout                 = 0
+nstfout                 = 0
+nstenergy               = 5000          ; Énergie toutes les 10 ps
+nstlog                  = 5000          ; Log toutes les 10 ps
+nstxout-compressed      = 5000          ; Trajectoire .xtc toutes les 10 ps
+compressed-x-precision  = 1000
+
+; Liaisons
+constraint_algorithm    = lincs
+constraints             = h-bonds
+lincs_iter              = 1
+lincs_order             = 4
+
+; Électrostatique
+cutoff-scheme           = Verlet
+ns_type                 = grid
+nstlist                 = 10
+rcoulomb                = 1.0
+rvdw                    = 1.0
+coulombtype             = PME
+pme_order               = 4
+fourierspacing          = 0.16
+
+; Température
+tcoupl                  = V-rescale
+tc-grps                 = Protein Non-Protein
+tau_t                   = 0.1     0.1
+ref_t                   = 300     300
+
+; Pression (NPT — barostat actif)
+pcoupl                  = Parrinello-Rahman
+pcoupltype              = isotropic
+tau_p                   = 2.0
+ref_p                   = 1.0
+compressibility         = 4.5e-5
+
+; Vitesses — PAS de génération (on repart du NPT)
+gen_vel                 = no
+continuation            = yes
+```
+```bash
+gmx grompp -f md.mdp -c npt.gro \
+           -p topol.top -o md.tpr
+
+gmx mdrun -deffnm md -ntmpi 1 -ntomp 8 -gpu_id 0
+```
