@@ -302,5 +302,18 @@ gmx rms -s md.tpr -f md.xtc -o rmsd.xvg -tu ns
 # Sélectionner : 4 (Backbone) pour référence et analyse
 ```
 ### RMSF Residu
+```bash
+gmx rmsf -s md.tpr -f md.xtc -o rmsf.xvg -res
+# Focus on residus 210-220 (boucle Ω)
+```
 ### Distance avibactam <-> Ser70
+``` bash
+gmx distance -s md.tpr -f md.xtc \
+             -select 'resname AVI and name O1; resid 70 and name OG' \
+             -oall distance_ser70.xvg
+```
 ### curves
+```bash
+xmgrace rmsd.xvg
+xmgrace rmsf.xvg
+```
