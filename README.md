@@ -295,3 +295,12 @@ gmx grompp -f md.mdp -c npt.gro \
 
 gmx mdrun -deffnm md -ntmpi 1 -ntomp 8 -gpu_id 0
 ```
+## Analyse
+### RMSD global
+``` bash
+gmx rms -s md.tpr -f md.xtc -o rmsd.xvg -tu ns
+# Sélectionner : 4 (Backbone) pour référence et analyse
+```
+### RMSF Residu
+### Distance avibactam <-> Ser70
+### curves
